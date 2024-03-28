@@ -46,7 +46,7 @@ python main.py
 
 ### Testing the Model
 
-To test the trained MSDDN model, you can run the following command:
+To test the trained WINet model, you can run the following command:
 
 ```
 python test.py
