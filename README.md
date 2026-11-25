@@ -1,109 +1,108 @@
+<div align="center">
+
 # WINet
 
-This folder contains the implementation of the paper **Pan-Sharpening With Wavelet-Enhanced High-Frequency Information** . 
+### Pan-Sharpening With Wavelet-Enhanced High-Frequency Information
 
-**Please note that the training datasets are not currently public. You are encouraged to train and test the checkpoints on your own satellite datasets. **
+**IEEE TGRS · 2024 · Official research implementation**
 
-## Getting Started
+Jie Zhang, Xuanhua He, Keyu Yan, Ke Cao, Rui Li, Chengjun Xie, Man Zhou, Danfeng Hong
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+[Paper](https://doi.org/10.1109/TGRS.2024.3367165) · [Modern implementation](modern/README.md) · [Project website source](docs/) · [Compatibility CI](https://github.com/alexhe101/WINet/actions/runs/45547477493)
 
-### Prerequisites
+[![Compatibility CI](https://github.com/alexhe101/WINet/actions/workflows/modern-pytorch.yml/badge.svg?branch=refactor%2Fmodern-pytorch)](https://github.com/alexhe101/WINet/actions/workflows/modern-pytorch.yml)
 
-In order to run this implementation, you need to have the following software and libraries installed:
+</div>
 
-- Python 3.7 or later
-- PyTorch 1.6 or later
-- CUDA (if using GPU)
-- NumPy
-- Matplotlib
-- OpenCV
-- PyYAML
+![Conceptual network overview](docs/assets/architecture.svg)
 
-### Installing
-You can install the necessary packages using pip:
+## Overview
+
+A wavelet-enhanced pan-sharpening network that uses frequency-selective lifting and high-frequency enhancement to recover detail while combining multispectral and panchromatic observations.
+
+## Compatibility-first release
+
+The new standalone package under `modern/` is derived from the exact public release, not a new architecture. The original implementation and experiment configuration are retained.
+
+- Separate wavelet transforms, lifting/HF enhancement, reconstruction and the network.
+- Keep all LL/HL/LH/HH operations, stage order, bicubic interpolation with align_corners=True, active and inactive registered parameter names (including wop3).
+- Replace hardcoded CUDA output allocation in IWT with input-device allocation, keeping the released FP32 output dtype. No wavelet library substitution or changed subband order.
+- The old source, training code and evaluation scripts remain available.
+
+## Quick start
+
+```bash
+git clone https://github.com/alexhe101/WINet.git
+cd WINet
+git switch refactor/modern-pytorch
+```
+
+
+
+```bash
+python -m pip install -e './modern[dev]'
+python -m pytest modern/tests -v -rs
+```
 
 ```python
-pip install torch numpy matplotlib opencv-python pyyaml
+from winet import build_model, load_weights, predict
+import torch
+
+model = build_model(device="cpu").eval()
+load_weights(model, "your_checkpoint.pth")
+ms = torch.rand(1, 4, 32, 32, device="cpu")
+pan = torch.rand(1, 1, 128, 128, device="cpu")
+with torch.inference_mode():
+    hrms = predict(model, ms, pan)
 ```
 
-### Configuration
+The above uses random inputs for an API demonstration only. Follow [data and radiometry conventions](modern/README.md#input-and-output-contract) for real data.
 
-Before training the model, you need to configure the following options in the `option.yaml` file:
-
-- `log_dir`: the directory to store the training log files.
-- `checkpoint`: the directory to store the trained model parameters.
-- `data_dir_train`: the directory of the training data.
-- `data_dir_eval`: the directory of the evaluation data.
-
-### Training the Model
-
-To train the model, you can run the following command:
-
-```
-python main.py
+```bash
+winet infer --device cpu --checkpoint your_checkpoint.pth --input scene.npz --output result.npz
+winet train --device cpu --data paired_train --output runs/train
 ```
 
-### Testing the Model
+## Weights and reproducibility
 
-To test the trained WINet model, you can run the following command:
+The state dict names and shapes remain the same as the released `Net`. The strict loader handles bare weights or the original `net` wrapper and an all-keys DataParallel prefix. Unused registered tensors are deliberately retained. The repository does not contain public trained checkpoints. Tests use the actual released model's initialized weights, not recovered pretrained weights.
 
+
+## Research results
+
+The HFIPS research announcement includes the original network and high-frequency enhancement diagrams. The full experimental tables are in the IEEE publication; no unverified numbers are reproduced here.
+
+[Original result source](https://english.hf.cas.cn/nr/rn/202403/t20240312_658124.html)
+
+## Validation and scope
+
+The suite compares the refactored model against the actual published source at width 4 and width 32: state-dict keys, strict loading, outputs, input gradients and every active parameter gradient. The CPU reference changes only the original IWT allocation's device; DWT/IWT roundtrip is checked separately. It also checks the CLI and one-step synthetic training. These are regression tests on synthetic inputs; they are not remeasurements of the paper's dataset quality.
+
+[CI record](https://github.com/alexhe101/WINet/actions/runs/45547477493). Full dataset reproduction and GPU performance are not claimed by the refactor.
+
+## Repository layout
+
+| Path | Purpose |
+|:--|:--|
+| [modern/src/winet/](modern/src/winet/) | Modular implementation |
+| [modern/tests/](modern/tests/) | Release and checkpoint regression |
+| [modern/README.md](modern/README.md) | Installation, data, compatibility details |
+| [model/winet.py](model/winet.py) | Untouched original model |
+| [option.yml](option.yml) | Untouched original training configuration |
+| [docs/](docs/) | Static project website |
+
+The legacy training entry point is `main.py`; the original testing script is `test.py`. Configure paths and the historical dependencies before using them. The original training data are not distributed.
+
+## Citation
+
+```bibtex
+@article{zhang2024winet,
+  title = {Pan-Sharpening With Wavelet-Enhanced High-Frequency Information},
+  author = {Zhang, Jie and He, Xuanhua and Yan, Keyu and Cao, Ke and Li, Rui and Xie, Chengjun and Zhou, Man and Hong, Danfeng},
+  journal = {IEEE Transactions on Geoscience and Remote Sensing},
+  volume = {62},
+  pages = {1--14},
+  year = {2024},
+  doi = {10.1109/TGRS.2024.3367165}
+}
 ```
-python test.py
-python py-tra/demo_deep_methods.py
-```
-
-### Configuration
-
-The configuration options are stored in the `option.yaml` file. Here is an explanation of each of the options:
-
-#### algorithm
-
-- algorithm: The model for training
-
-#### Logging
-
-- `log_dir`: The location where the log files will be stored.
-
-#### Model Weights
-
-- `checkpoint`: The location to store the model weights.
-
-#### Training Data
-
-- `data_dir_train`: The location of the training data.
-- `data_dir_eval`: The location of the test data.
-
-#### Pretrain
-
-- `pretrained`: Whether to use a pretrained model.
-- `pre_sr`: The location of the pretrained model.
-- `pre_folder`: The location where the pretrained models are stored.
-
-#### Testing
-
-- `algorithm`: The algorithm to use for testing.
-- `type`: The type of testing, either `test` or `eval`.
-- `data_dir`: The location of the test data.
-- `source_ms`: The source of the multi-spectral data.
-- `source_pan`: The source of the panchromatic data.
-- `model`: The location of the model to use for testing.
-- `save_dir`: The location to save the test results.
-
-#### Data Processing
-
-- `upscale`: The upscale factor.
-- `batch_size`: The size of each batch.
-- `patch_size`: The size of each patch.
-- `data_augmentation`: Whether to use data augmentation.
-- `n_colors`: The number of color channels.
-- `rgb_range`: The range of the RGB values.
-- `normalize`: Whether to normalize the data.
-
-#### Training Hyperparameters
-
-- `schedule.lr`: The learning rate.
-- `schedule.decay`: The learning rate decay.
-- `schedule.gamma`: The learning rate decay factor.
-- `schedule.optimizer`: The optimizer to use, either `ADAM`, `SGD`, or `RMSprop`.
-- `schedule.momentum`: The momentum for the `SGD` optimizer.
