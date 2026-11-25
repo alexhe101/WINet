@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "winet-modern"
+version = "0.1.0"
+description = "Compatibility-first refactor of WINet"
+requires-python = ">=3.10"
+dependencies = ["torch>=2.1", "numpy>=1.24"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "scipy>=1.10"]
+
+[project.scripts]
+winet = "winet.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
